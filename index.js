@@ -40,6 +40,20 @@ async function run() {
         const carCategoryCollection = client.db('AutoCarServer').collection('carCategory');
         const bookingsCollection = client.db('AutoCarServer').collection('bookings');
         const usersCollection = client.db('AutoCarServer').collection('users');
+        const addProductsCollection = client.db('AutoCarServer').collection('addProducts');
+
+
+        //  <---------- Middleware verify admin function----------------> 
+        const verifyAdmin = async (req, res, next) => {
+            const deCodedEmail = req.decoded.email;
+            const query = { email: deCodedEmail };
+            const user = await usersCollection.findOne(query);
+
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ message: 'forbidden access a' })
+            }
+            next()
+        }
 
 
         //   Get --------
@@ -70,11 +84,14 @@ async function run() {
             const query = {}
             const allUsers = await usersCollection.find(query).toArray();
             res.send(allUsers);
-        })
+        });
 
 
 
-        // Post--------
+
+
+
+        //------------- Post--------
         // carCategory booking create
         app.post('/bookings', async (req, res) => {
             const bookings = req.body;
@@ -116,15 +133,15 @@ async function run() {
         });
 
 
-        // Put--------------
-        app.put('/users/admin/:id', JWTVerify, async (req, res) => {
-            const deCodedEmail = req.decoded.email;
-            const query = { email: deCodedEmail };
-            const user = await usersCollection.findOne(query);
+        //------------ Put--------------
+        app.put('/users/admin/:id', JWTVerify, verifyAdmin, async (req, res) => {
+            // const deCodedEmail = req.decoded.email;
+            // const query = { email: deCodedEmail };
+            // const user = await usersCollection.findOne(query);
 
-            if (user?.role !== 'admin') {
-                return res.status(403).send({ message: 'forbidden access a' })
-            }
+            // if (user?.role !== 'admin') {
+            //     return res.status(403).send({ message: 'forbidden access a' })
+            // }
 
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
@@ -137,6 +154,29 @@ async function run() {
             const result = await usersCollection.updateOne(filter, updatedDoc, options);
             res.send(result)
         });
+
+
+
+        // <------------ADD PRODUCT------------>
+
+        app.get('/addProducts', JWTVerify, verifyAdmin, async (req, res) => {
+            const query = {};
+            const result = await addProductsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/addProducts', JWTVerify, verifyAdmin, async (req, res) => {
+            const products = req.body;
+            const result = await addProductsCollection.insertOne(products)
+            res.send(result);
+        });
+
+        app.delete('/addProducts/:id', JWTVerify, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await addProductsCollection.deleteOne(filter);
+            res.send(result);
+        })
 
 
     }
